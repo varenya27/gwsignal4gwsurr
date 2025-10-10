@@ -1,0 +1,15 @@
+*.pyc
+*.so
+*.swp
+*.h5
+*.gz
+*.DS_Store
+*~
+
+.ipynb_checkpoints
+.pytest_cache
+surrogate_downloads
+
+build/
+dist/
+gwsignal4gwsurr.egg-info/
