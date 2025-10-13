@@ -7,7 +7,7 @@ from bilby.gw.waveform_generator import WaveformGenerator
 
 def parameter_conversion(parameters):
     mass_1,mass_2 = chirp_mass_and_mass_ratio_to_component_masses(parameters['chirp_mass'],parameters['mass_ratio'])
-    params = {
+    converted_parameters = {
         'mass1':mass_1,
         'mass2':mass_2,
         'spin1z':parameters['chi_1'],
@@ -17,10 +17,10 @@ def parameter_conversion(parameters):
         'phi_ref':parameters['phase'],
     }
     keys=[]
-    for key in params.keys():
-        if key not in parameters.keys():
+    for key in converted_parameters.keys():
+        if key not in list(parameters.keys()):
             keys.append(key)
-    return params, keys
+    return converted_parameters, keys
 
 def get_waveform_generator(**kwargs):
     # bilby sometimes defaults to the inbuilt BBH parameter conversion function, which we don't want
@@ -29,4 +29,5 @@ def get_waveform_generator(**kwargs):
         kwargs['parameter_conversion']=parameter_conversion
 
     return WaveformGenerator(**kwargs)
+
 
