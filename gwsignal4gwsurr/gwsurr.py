@@ -49,7 +49,7 @@ class NRHybSur3dq8_gwsurr(CompactBinaryCoalescenceGenerator):
     def generate_td_modes(self, **parameters):
         self.parameter_check(units_sys='Cosmo', **parameters)
         self.waveform_dict = self._strip_units(self.waveform_dict)
-        fmin, dt = self.waveform_dict["f22_start"], self.waveform_dict["deltaT"]
+        fstart, dt = self.waveform_dict["f22_start"], self.waveform_dict["deltaT"]
         f_ref = self.waveform_dict["f22_ref"]
 
         m1, m2 = self.waveform_dict["mass1"], self.waveform_dict["mass2"]
@@ -69,19 +69,18 @@ class NRHybSur3dq8_gwsurr(CompactBinaryCoalescenceGenerator):
         q = m1 / m2  # This is the gwsurrogate convention, q=m1/m2>=1
         if q < 1.0:
             q = 1 / q
+            # VU: swap spins also!
+            chi1,chi2=chi2,chi1
+            # VU: 
+            self.waveform_dict['phi_ref'] += np.pi
 
-
-        # VU: reduce fmin to make sure tapering doesn't remove signal: [cf. L#1046 in SimInspiral.c]
-        extra_cycles = 3. 
-        extra_time_fraction = 0.1
-        m1_kg = m1 * lal.MSUN_SI
-        m2_kg = m2 * lal.MSUN_SI
-        tchirp = lalsim.SimInspiralChirpTimeBound(fmin, m1_kg, m2_kg, s1z, s2z)
-        s = lalsim.SimInspiralFinalBlackHoleSpinBound(s1z,s2z)
-        tmerge = lalsim.SimInspiralMergeTimeBound(m1_kg,m2_kg)+lalsim.SimInspiralRingdownTimeBound(m1_kg+m2_kg,s)
-        textra = extra_cycles / fmin
-        fstart = lalsim.SimInspiralChirpStartFrequencyBound((1.+extra_time_fraction)*tchirp+tmerge+textra,m1_kg,m2_kg)
-
+        # print('------- gwsignal params for td modes generation -------')
+        # print('masses:',m1,m2)
+        # print('spins:',chi1,chi2)
+        # print('time step:',dt)
+        # print('fmin,fref:',fstart,f_ref)
+        # print('distance, inc, phi_ref=',dist/1e6, self.waveform_dict["inclination"], self.waveform_dict["phi_ref"])
+        # print('-------------------------------------------------------')
         times, h, dyn = self.sur(
             q,
             chi1,
@@ -105,7 +104,7 @@ class NRHybSur3dq8_gwsurr(CompactBinaryCoalescenceGenerator):
         return gw.GravitationalWaveModes(hlm)
 
     def generate_td_waveform(self, **parameters):
-        # VU: added pi/2-phi_ref to match LALSuite convention
+        # VU: added pi/2-phi_ref to match LALSim convention
         theta, phi = parameters['inclination'], (np.pi/2-parameters['phi_ref'].value)*u.rad
         hlm = self.generate_td_modes(**parameters)
         hp, hc = hlm(theta, phi)
@@ -113,6 +112,7 @@ class NRHybSur3dq8_gwsurr(CompactBinaryCoalescenceGenerator):
         return hp, hc
 
     def generate_fd_polarizations_from_td(self, **parameters):
+        # VU: inspired by LALSimInspiralGeneratorConditioning.c L486
         # Adjust deltaT depending on sampling rate
         fmax = parameters["f_max"].value
         f_nyquist = fmax
@@ -129,11 +129,36 @@ class NRHybSur3dq8_gwsurr(CompactBinaryCoalescenceGenerator):
         deltaT = 0.5 / f_nyquist
         parameters["deltaT"] = deltaT*u.s
 
+        # VU: reduce fmin to make sure tapering doesn't remove signal: [cf. L#1046 in SimInspiral.c]
+        m1 = parameters['mass1'].value
+        m2 = parameters['mass2'].value
+        s1z= parameters['spin1z'].value
+        s2z= parameters['spin2z'].value 
+        fmin = parameters['f22_start'].value
+        extra_cycles = 3. 
+        extra_time_fraction = 0.1
+        m1_kg = m1 * lal.MSUN_SI
+        m2_kg = m2 * lal.MSUN_SI
+        tchirp = lalsim.SimInspiralChirpTimeBound(fmin, m1_kg, m2_kg, s1z, s2z)
+        s = lalsim.SimInspiralFinalBlackHoleSpinBound(s1z,s2z)
+        tmerge = lalsim.SimInspiralMergeTimeBound(m1_kg,m2_kg)+lalsim.SimInspiralRingdownTimeBound(m1_kg+m2_kg,s)
+        textra = extra_cycles / fmin
+        fstart = lalsim.SimInspiralChirpStartFrequencyBound((1.+extra_time_fraction)*tchirp+tmerge+textra,m1_kg,m2_kg)
 
+        # VU: finally update the parameters dict that gets sent to gwsurrogate
+        parameters['f22_start'] = fstart*u.Hz
         hp_,hc_ = self.generate_td_waveform(**parameters)
+
+        # VU: reset this in case it gets used somewhere else
+        parameters['f22_start'] = fmin*u.Hz
+
         # VU: set epoch to merger time according to surrogate convention (instead of start time)
         epoch = lal.LIGOTimeGPS(
             hp_.times[np.abs(np.array(hp_.times)).argmin()].value
+        )
+        # VU: maybe not
+        epoch = lal.LIGOTimeGPS(
+            hp_.times[0].value
         )
 
         hp = lal.CreateREAL8TimeSeries(
@@ -146,17 +171,6 @@ class NRHybSur3dq8_gwsurr(CompactBinaryCoalescenceGenerator):
         hp.data.data = hp_.value
         hc.data.data = hc_.value
 
-        m1 = parameters['mass1'].value
-        m2 = parameters['mass2'].value
-        s1z= parameters['spin1z'].value
-        s2z= parameters['spin2z'].value 
-        fmin = parameters['f22_start'].value
-        extra_cycles = 3. 
-        extra_time_fraction = 0.1
-        m1_kg = m1 * lal.MSUN_SI
-        m2_kg = m2 * lal.MSUN_SI
-        tchirp = lalsim.SimInspiralChirpTimeBound(fmin, m1_kg, m2_kg, s1z, s2z)
-        textra = extra_cycles / fmin
 
         lalsim.SimInspiralTDConditionStage1(hp,hc, extra_time_fraction * tchirp +textra,fmin)
 
@@ -175,10 +189,12 @@ class NRHybSur3dq8_gwsurr(CompactBinaryCoalescenceGenerator):
         else:
             chirplen = int(1.0 / (deltaF * deltaT))
 
+        # print('epoch before resize',hp.epoch)
         # resize waveforms to the required length
         lal.ResizeREAL8TimeSeries(hp, hp.data.length - chirplen, chirplen)
         lal.ResizeREAL8TimeSeries(hc, hc.data.length - chirplen, chirplen)
         # print('DBUG resizing to:',hp.data.length, hp.data.length-chirplen, chirplen, chirplen/2.+1)
+        # print('epoch after resize',hp.epoch)
 
         # FFT - Using LAL routines
         hptilde = lal.CreateCOMPLEX16FrequencySeries(
@@ -202,8 +218,17 @@ class NRHybSur3dq8_gwsurr(CompactBinaryCoalescenceGenerator):
         lal.REAL8TimeFreqFFT(hctilde, hc, plan)
         lal.REAL8TimeFreqFFT(hptilde, hp, plan)
 
+        # print('------- gwsignal params for fd modes generation -------')
+        # print('length',hptilde.data.length)
+        # print('epoch',hptilde.epoch, hp.epoch)
+        # print('f0',hptilde.f0)
+        # print('sampleUnits',hptilde.sampleUnits)
+        # print('-------------------------------------------------------')
+
+
+
         # print('DBUG', type(hptilde),hptilde)
-        return hptilde.data, hctilde.data
+        return hptilde, hctilde
        
     def _to_gwpy_series(self, modes_dict, times):
         """
