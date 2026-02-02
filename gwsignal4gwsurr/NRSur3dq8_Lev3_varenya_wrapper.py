@@ -1,13 +1,12 @@
 from astropy import units as u
 import numpy as np
-from .gwsurr import NRSur3dq8_Lev2_varenya_gwsurr
+from .gwsurr import NRSur3dq8_Lev3_varenya_gwsurr
 
-gen = NRSur3dq8_Lev2_varenya_gwsurr()
-def NRSur3dq8_Lev2_varenya_wrapper(freqs, mass1,mass2,spin1z,spin2z,distance,theta_jn,phi_ref,**waveform_arguments):
+gen = NRSur3dq8_Lev3_varenya_gwsurr()
+def NRSur3dq8_Lev3_varenya_wrapper(freqs, mass1,mass2,spin1z,spin2z,distance,theta_jn,phi_ref,**waveform_arguments):
     if waveform_arguments['reference-frequency']<waveform_arguments['f-min']:
         print(f"DBUG fref {waveform_arguments['reference-frequency']} was lower than fmin {waveform_arguments['f-min']}! Setting fref=fmin")
         waveform_arguments['reference-frequency']=waveform_arguments['f-min']
-
     # print('DBUG sending min and ref freqs',waveform_arguments['f-min'],waveform_arguments['reference-frequency'])
     if waveform_arguments['catch_waveform_errors']:
         try:
@@ -23,10 +22,9 @@ def NRSur3dq8_Lev2_varenya_wrapper(freqs, mass1,mass2,spin1z,spin2z,distance,the
                 f22_ref=waveform_arguments['reference-frequency']*u.Hz,
                 f_max = max(freqs)*u.Hz,
                 deltaF=(freqs[1]-freqs[0])*u.Hz,
-                noisy = waveform_arguments.get('noisy', False)
             )
         except Exception as e:
-            print(f"NRSur3dq8_Lev2_varenya_wrapper failed to generate waveform: {e}")
+            print(f"NRSur3dq8_Lev3_varenya_wrapper failed to generate waveform: {e}")
             return None
     else:
         hp_gwsignal,hc_gwsignal =  gen.generate_fd_polarizations_from_td(
@@ -41,7 +39,6 @@ def NRSur3dq8_Lev2_varenya_wrapper(freqs, mass1,mass2,spin1z,spin2z,distance,the
             f22_ref=waveform_arguments['reference-frequency']*u.Hz,
             f_max = max(freqs)*u.Hz,
             deltaF=(freqs[1]-freqs[0])*u.Hz,
-            noisy = waveform_arguments.get('noisy', False)
         )
 
     hp,hc = np.zeros_like(freqs,dtype=complex),np.zeros_like(freqs,dtype=complex)

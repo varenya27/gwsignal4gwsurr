@@ -17,7 +17,7 @@ def parameter_conversion_aligned(parameters):
     spins = {}
     extrinsic = {
         'distance':parameters['luminosity_distance'],
-        'inclination':parameters['theta_jn'],
+        'theta_jn':parameters['theta_jn'],
         'phi_ref':parameters['phase']
     }
 
@@ -62,7 +62,7 @@ def parameter_conversion_precessing(parameters):
     spins = {}
     extrinsic = {
         'distance':parameters['luminosity_distance'],
-        'inclination':parameters['theta_jn'],
+        'theta_jn':parameters['theta_jn'],
         'phi_ref':parameters['phase']
     }
 

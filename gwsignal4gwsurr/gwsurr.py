@@ -457,6 +457,7 @@ class NRSur7dq4_gwsurr(CompactBinaryCoalescenceGenerator):
             dist_mpc=dist/1e6,  # In Mpc
         )
 
+        # print('DBUG gwsignal using mass1=',m1)
         # gwsurrogate already returns things as a dict
         # indexed by (ell,m) so just return that
         # Create gwpy timeseries
