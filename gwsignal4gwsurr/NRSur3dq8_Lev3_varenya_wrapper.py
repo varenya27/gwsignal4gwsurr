@@ -4,10 +4,16 @@ from .gwsurr import NRSur3dq8_Lev3_varenya_gwsurr
 
 gen = NRSur3dq8_Lev3_varenya_gwsurr()
 def NRSur3dq8_Lev3_varenya_wrapper(freqs, mass1,mass2,spin1z,spin2z,distance,theta_jn,phi_ref,**waveform_arguments):
-    if waveform_arguments['reference-frequency']<waveform_arguments['f-min']:
-        print(f"DBUG fref {waveform_arguments['reference-frequency']} was lower than fmin {waveform_arguments['f-min']}! Setting fref=fmin")
-        waveform_arguments['reference-frequency']=waveform_arguments['f-min']
+    if 'f-min' in waveform_arguments.keys():
+        f22_start = waveform_arguments['f-min']
+    else:
+        f22_start = waveform_arguments['minimum_frequency']
+
+    if waveform_arguments['reference-frequency']<f22_start:
+        print(f"DBUG fref {waveform_arguments['reference-frequency']} was lower than fmin {f22_start}! Setting fref=fmin")
+        waveform_arguments['reference-frequency']=f22_start
     # print('DBUG sending min and ref freqs',waveform_arguments['f-min'],waveform_arguments['reference-frequency'])
+    # print('DBUG generating wf with params', mass1,mass2,spin1z,spin2z,distance,theta_jn,phi_ref,f22_start,waveform_arguments)
     if waveform_arguments['catch_waveform_errors']:
         try:
             hp_gwsignal,hc_gwsignal =  gen.generate_fd_polarizations_from_td(
@@ -18,10 +24,11 @@ def NRSur3dq8_Lev3_varenya_wrapper(freqs, mass1,mass2,spin1z,spin2z,distance,the
                 distance=distance*u.Mpc,
                 inclination=theta_jn*u.rad,
                 phi_ref=(phi_ref)*u.rad,
-                f22_start=waveform_arguments['f-min']*u.Hz,
+                f22_start=f22_start*u.Hz,
                 f22_ref=waveform_arguments['reference-frequency']*u.Hz,
-                f_max = max(freqs)*u.Hz,
+                f_max = waveform_arguments['maximum_frequency']*u.Hz,
                 deltaF=(freqs[1]-freqs[0])*u.Hz,
+                noisy = waveform_arguments.get('noisy', False)
             )
         except Exception as e:
             print(f"NRSur3dq8_Lev3_varenya_wrapper failed to generate waveform: {e}")
@@ -35,10 +42,11 @@ def NRSur3dq8_Lev3_varenya_wrapper(freqs, mass1,mass2,spin1z,spin2z,distance,the
             distance=distance*u.Mpc,
             inclination=theta_jn*u.rad,
             phi_ref=(phi_ref)*u.rad,
-            f22_start=waveform_arguments['f-min']*u.Hz,
+            f22_start=f22_start*u.Hz,
             f22_ref=waveform_arguments['reference-frequency']*u.Hz,
-            f_max = max(freqs)*u.Hz,
+            f_max = waveform_arguments['maximum_frequency']*u.Hz,
             deltaF=(freqs[1]-freqs[0])*u.Hz,
+            noisy = waveform_arguments.get('noisy', False)
         )
 
     hp,hc = np.zeros_like(freqs,dtype=complex),np.zeros_like(freqs,dtype=complex)

@@ -2,8 +2,9 @@
 templates for parameter conversion and waveform generator
 use these two in any new wrapper and send to bilby
 '''
-from bilby.gw.conversion import chirp_mass_and_mass_ratio_to_component_masses
+from bilby.gw.conversion import chirp_mass_and_mass_ratio_to_component_masses, convert_to_lal_binary_black_hole_parameters
 from bilby.gw.waveform_generator import WaveformGenerator
+from bilby.gw.source import lal_binary_black_hole
 import numpy as np 
 
 def parameter_conversion_aligned(parameters):
@@ -96,6 +97,17 @@ parameter_conversions = [
 ]
 
 def get_waveform_generator(**kwargs):
+
+    # for injections, revert to bilby defaults
+    if kwargs['waveform_arguments']['waveform_approximant'] == 'NR_hdf5':
+        print('INFO reverting to bilby defaults for injection')
+        print('INFO updating frequency_domain_source_model to', lal_binary_black_hole)
+        print('INFO updating parameter_conversion to', convert_to_lal_binary_black_hole_parameters)
+
+        kwargs['frequency_domain_source_model'] = lal_binary_black_hole
+        kwargs['parameter_conversion'] = convert_to_lal_binary_black_hole_parameters
+        return WaveformGenerator(**kwargs)
+
     # bilby sometimes defaults to the inbuilt BBH parameter conversion function, which we don't want
     # [TODO] this is VERY hacky, need to figure out a better way to do this 
     if not kwargs['parameter_conversion'] in parameter_conversions:
@@ -107,4 +119,6 @@ def get_waveform_generator(**kwargs):
             kwargs['parameter_conversion'] = parameter_conversion_precessing
         else:
             raise Exception('Not sure what conversion function to assign for this waveform model')
+
+
     return WaveformGenerator(**kwargs)

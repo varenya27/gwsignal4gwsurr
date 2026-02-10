@@ -49,10 +49,12 @@ def NRSur7dq4_wrapper(freqs, mass1,mass2,a_1,a_2,tilt_1,tilt_2,phi_12, phi_jl,di
     except Exception as e:
         print(f"PROG NRSur7dq4_wrapper failed to generate waveform: {e}")
         return None
-    # print('DBUG used params', mass1,mass2,spin1x,spin1y,spin1z,spin2x,spin2y,spin2z,distance,iota,phi_ref,waveform_arguments['f-min'],max(freqs),waveform_arguments['reference-frequency'],freqs[1]-freqs[0])
+    # print('DBUG gwsig lalsim used params', mass1,mass2,spin1x,spin1y,spin1z,spin2x,spin2y,spin2z,distance,iota,phi_ref,waveform_arguments['minimum_frequency'],max(freqs),waveform_arguments['reference-frequency'],freqs[1]-freqs[0])
 
 
+    # print('DBUG epoch for gwsig lalsim =',hp_gwsignal.epoch.gpsSeconds , hp_gwsignal.epoch.gpsNanoSeconds)
     # return {'plus': hp_gwsignal.data.data, 'cross': hc_gwsignal.data.data}
+
     hp,hc = np.zeros_like(freqs,dtype=complex),np.zeros_like(freqs,dtype=complex)
     minimum_frequency = waveform_arguments['minimum_frequency']
     maximum_frequency = waveform_arguments['maximum_frequency']

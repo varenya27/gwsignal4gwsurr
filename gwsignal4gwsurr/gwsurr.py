@@ -339,6 +339,7 @@ class NRSur3dq8_Lev3_varenya_gwsurr(NRHybSur3dq8_gwsurr):
     # TODO: add option to add noise to waveform (for marginalization purposes)
 
     def generate_td_modes(self, **parameters):
+        noisy = parameters.pop('noisy')
         self.parameter_check(units_sys='Cosmo', **parameters)
         self.waveform_dict = self._strip_units(self.waveform_dict)
         fstart, dt = self.waveform_dict["f22_start"], self.waveform_dict["deltaT"]
@@ -374,10 +375,12 @@ class NRSur3dq8_Lev3_varenya_gwsurr(NRHybSur3dq8_gwsurr):
             dist_mpc=dist/1e6,  # In Mpc
             mode_list = [(2,2)]
         )
-        # delta_phi = 1e-4*np.random.randn(len(h[(2,2)]))
-        # for ellm, h_array in h.items():
-        #     ell,m = ellm
-        #     h[ellm] = h_array*np.exp(1j*m*delta_phi)
+
+        if noisy:
+            delta_phi = 1e-4*np.random.randn(len(h[(2,2)]))
+            for ellm, h_array in h.items():
+                ell,m = ellm
+                h[ellm] = h_array*np.exp(1j*m*delta_phi)
 
         # gwsurrogate already returns things as a dict
         # indexed by (ell,m) so just return that
@@ -477,6 +480,9 @@ class NRSur7dq4_gwsurr(CompactBinaryCoalescenceGenerator):
         return hp, hc
 
     def generate_fd_polarizations_from_td(self, **parameters):
+        # print('--------------------------')
+        print('DBUG generating with params:',parameters)
+        # print('--------------------------')
         # VU: inspired by LALSimInspiralGeneratorConditioning.c L486
         # Adjust deltaT depending on sampling rate
         fmax = parameters["f_max"].value
@@ -495,7 +501,9 @@ class NRSur7dq4_gwsurr(CompactBinaryCoalescenceGenerator):
         parameters["deltaT"] = deltaT*u.s
 
 
+        print('DBUG deltaT and such',deltaT, deltaF, f_nyquist)
         hp_,hc_ = self.generate_td_waveform(**parameters)
+        # return (hp_, hc_)
 
 
         epoch = lal.LIGOTimeGPS(

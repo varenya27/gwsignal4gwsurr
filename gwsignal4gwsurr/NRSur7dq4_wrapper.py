@@ -15,12 +15,15 @@ def NRSur7dq4_wrapper(freqs, mass1,mass2,a_1,a_2,tilt_1,tilt_2,phi_12, phi_jl,di
     else:
         f22_start = waveform_arguments['minimum_frequency']
 
+    # print('DBUG f22_start=', f22_start)
     if waveform_arguments['reference-frequency']<f22_start:
         print(f"DBUG fref {waveform_arguments['reference-frequency']} was lower than fmin {f22_start}! Setting fref=fmin")
         waveform_arguments['reference-frequency']=f22_start
 
+
     # convert to cartesian spins
     # iota is angle between orbital angular momentum and line of sight (\theta_LN)
+    # print('DBUG converting', theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2, mass1, mass2, waveform_arguments['reference-frequency'], phi_ref)
     iota, spin1x, spin1y, spin1z, spin2x, spin2y, spin2z = bilby_to_lalsimulation_spins(
         theta_jn = theta_jn,
         phi_jl =  phi_jl,
@@ -34,6 +37,7 @@ def NRSur7dq4_wrapper(freqs, mass1,mass2,a_1,a_2,tilt_1,tilt_2,phi_12, phi_jl,di
         reference_frequency = waveform_arguments['reference-frequency'],
         phase = phi_ref
     )
+    # print('DBUG got', iota, spin1x, spin1y, spin1z, spin2x, spin2y, spin2z)
 
     if waveform_arguments['catch_waveform_errors']:
         try:
@@ -48,11 +52,10 @@ def NRSur7dq4_wrapper(freqs, mass1,mass2,a_1,a_2,tilt_1,tilt_2,phi_12, phi_jl,di
                 spin2z=spin2z*u.dimensionless_unscaled,
                 distance=distance*u.Mpc,
                 inclination=iota*u.rad,
-                phi_ref=(phi_ref)*u.rad,
+                phi_ref=phi_ref*u.rad,
                 f22_start=f22_start*u.Hz,
                 f22_ref=waveform_arguments['reference-frequency']*u.Hz,
                 f_max = waveform_arguments['maximum_frequency']*u.Hz,
-
                 deltaF=(freqs[1]-freqs[0])*u.Hz,
             )
         except Exception as e:
@@ -70,15 +73,16 @@ def NRSur7dq4_wrapper(freqs, mass1,mass2,a_1,a_2,tilt_1,tilt_2,phi_12, phi_jl,di
             spin2z=spin2z*u.dimensionless_unscaled,
             distance=distance*u.Mpc,
             inclination=iota*u.rad,
-            phi_ref=(phi_ref)*u.rad,
+            phi_ref=phi_ref*u.rad,
             f22_start=f22_start*u.Hz,
             f22_ref=waveform_arguments['reference-frequency']*u.Hz,
             f_max = waveform_arguments['maximum_frequency']*u.Hz,
             deltaF=(freqs[1]-freqs[0])*u.Hz,
         )
 
-    # print('DBUG used params', mass1,mass2,spin1x,spin1y,spin1z,spin2x,spin2y,spin2z,distance,iota,phi_ref,waveform_arguments['f-min'],max(freqs),waveform_arguments['reference-frequency'],freqs[1]-freqs[0])
+    # print('DBUG gwsig gwsurr used params', mass1,mass2,spin1x,spin1y,spin1z,spin2x,spin2y,spin2z,distance,iota,phi_ref,waveform_arguments['minimum_frequency'],max(freqs),waveform_arguments['reference-frequency'],freqs[1]-freqs[0])
 
+    # print('DBUG epoch for gwsig gwsurr =',hp_gwsignal.epoch.gpsSeconds, hp_gwsignal.epoch.gpsNanoSeconds)
     # return {'plus': hp_gwsignal.data.data, 'cross': hc_gwsignal.data.data}
 
     hp,hc = np.zeros_like(freqs,dtype=complex),np.zeros_like(freqs,dtype=complex)
