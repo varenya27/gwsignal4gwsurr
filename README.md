@@ -30,7 +30,7 @@ waveform-arguments-dict ={
 ```
 .
 ├── examples
-│   └── GW150914.ini
+│   └── GW150914.ini          ==> example bilby .ini file to do PE on GW150914 with NRSur7dq4
 ├── gwsignal4gwsurr
 │   ├── gwsurr_playground.py  ==> playground for new/experimental models
 │   ├── gwsurr.py             ==> finalized models get their own class here
