@@ -26,6 +26,20 @@ waveform-arguments-dict ={
 }
 ```
 
+# File tree
+```
+.
+├── examples
+│   └── GW150914.ini
+├── gwsignal4gwsurr
+│   ├── gwsurr_playground.py  ==> playground for new/experimental models
+│   ├── gwsurr.py             ==> finalized models get their own class here
+│   ├── __init__.py
+│   └── utils_bilby.py        ==> bilby facing code goes here
+
+
+```
+
 # Implemented models
 1. NRHybSur3dq8
 2. NRSur7dq4
