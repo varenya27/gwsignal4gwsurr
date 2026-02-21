@@ -53,10 +53,10 @@ surrogate_models = {
     ),
     "NRSur7dq4": SurrogateWaveformProperties(precessing=True, wrapper=NRSur7dq4_gwsurr),
     "NRSur3dq8_Lev2_varenya": SurrogateWaveformProperties(
-        precessing=False, wrapper=NRSur3dq8_Lev2_varenya_gwsurr,marginalization_wferrr=True
+        precessing=False, wrapper=NRSur3dq8_Lev2_varenya_gwsurr,marginalization_wferr=True
     ),
     "NRSur3dq8_Lev3_varenya": SurrogateWaveformProperties(
-        precessing=False, wrapper=NRSur3dq8_Lev3_varenya_gwsurr,marginalization=True
+        precessing=False, wrapper=NRSur3dq8_Lev3_varenya_gwsurr,marginalization_wferr=True
     ),
     "NRSur7dq4_LALSim": SurrogateWaveformProperties(
         precessing=True, wrapper=NRSur7dq4_LALSim_gwsurr
