@@ -99,7 +99,7 @@ def gwsurrogate_binary_black_hole_aligned(
 
     # extra arguments to hand over to the model for marginalization
     extra_args = {}
-    if model.marginalization:
+    if model.marginalization_wferr:
         extra_args['noisy'] = waveform_arguments.get("noisy", False)
         extra_args['noise_level'] = waveform_arguments.get("noise_level", 1e-4)
         parameters['extra_args'] = extra_args
@@ -284,6 +284,7 @@ def parameter_conversion(parameters):
 
 class SurrogateWaveformGenerator(WaveformGenerator):
     def __init__(self, **kwargs):
+        print('DBUG waveform generator got initialized with',kwargs)
         approximant = kwargs["waveform_arguments"]["waveform_approximant"]
 
         model = surrogate_models.get(approximant, None)
