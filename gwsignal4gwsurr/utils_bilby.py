@@ -14,6 +14,7 @@ from bilby.gw.conversion import (
     chirp_mass_and_mass_ratio_to_component_masses,
     convert_to_lal_binary_black_hole_parameters,
 )
+from scipy.special import kn
 from .gwsurr import (
     NRHybSur3dq8_gwsurr,
     NRSur7dq4_gwsurr,
@@ -76,12 +77,17 @@ def gwsurrogate_binary_black_hole_aligned(
     phi_ref,
     **waveform_arguments,
 ):
-    f22_start = waveform_arguments["minimum_frequency"]
 
+    # replace '-' with '_' in keys
+    for k in list(waveform_arguments.keys()):
+        if "-" in k:
+            k_ = k.replace("-", "_")
+            waveform_arguments[k_] = waveform_arguments.pop(k)
+
+    f22_start = waveform_arguments["minimum_frequency"]
     approximant = waveform_arguments["waveform_approximant"]
     model = surrogate_models[approximant]
     gen = model.instance
-
 
     parameters = dict(
         mass1=mass1 * u.Msun,
@@ -92,7 +98,7 @@ def gwsurrogate_binary_black_hole_aligned(
         inclination=theta_jn * u.rad,
         phi_ref=(phi_ref) * u.rad,
         f22_start=f22_start * u.Hz,
-        f22_ref=waveform_arguments["reference-frequency"] * u.Hz,
+        f22_ref=waveform_arguments["reference_frequency"] * u.Hz,
         f_max=waveform_arguments["maximum_frequency"] * u.Hz,
         deltaF=(freqs[1] - freqs[0]) * u.Hz,
     )
@@ -109,7 +115,7 @@ def gwsurrogate_binary_black_hole_aligned(
         )
     except Exception as e:
         if waveform_arguments["catch_waveform_errors"]:
-            print(f"WARN surrogate wrapper failed to generate waveform: {e}")
+            # print(f"WARN surrogate wrapper failed to generate waveform: {e}")
             return None
         raise Exception(f"KILL surrogate wrapper failed to generate waveform: {e}")
 
@@ -167,7 +173,7 @@ def gwsurrogate_binary_black_hole_precessing(
         a_2=a_2,
         mass_1=mass1 * solar_mass,
         mass_2=mass2 * solar_mass,
-        reference_frequency=waveform_arguments["reference-frequency"],
+        reference_frequency=waveform_arguments["reference_frequency"],
         phase=phi_ref,
     )
 
@@ -188,7 +194,7 @@ def gwsurrogate_binary_black_hole_precessing(
             inclination=iota * u.rad,
             phi_ref=phi_ref * u.rad,
             f22_start=f22_start * u.Hz,
-            f22_ref=waveform_arguments["reference-frequency"] * u.Hz,
+            f22_ref=waveform_arguments["reference_frequency"] * u.Hz,
             f_max=waveform_arguments["maximum_frequency"] * u.Hz,
             deltaF=(freqs[1] - freqs[0]) * u.Hz,
         )
@@ -228,7 +234,7 @@ def gwsurrogate_binary_black_hole_precessing(
 # ===================== convert bilby params to gwsurrogate ones =====================
 def parameter_conversion(parameters):
     # replace '-' with '_' in keys
-    for k in parameters.keys():
+    for k in list(parameters.keys()):
         if "-" in k:
             k_ = k.replace("-", "_")
             parameters[k_] = parameters.pop(k)
@@ -284,10 +290,15 @@ def parameter_conversion(parameters):
 
 class SurrogateWaveformGenerator(WaveformGenerator):
     def __init__(self, **kwargs):
-        print('DBUG waveform generator got initialized with',kwargs)
         approximant = kwargs["waveform_arguments"]["waveform_approximant"]
-
         model = surrogate_models.get(approximant, None)
+
+        print(kwargs)
+        #---------- temporary debugging code ----------#
+        bilby = kwargs.pop('use_bilby',False)
+        if bilby: 
+            model=None
+        #----------------------------------------------#
 
         # if approximant isn't present in surrogate_models, revert to bilby defaults
         if model is None:
