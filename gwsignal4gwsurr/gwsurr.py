@@ -741,3 +741,10 @@ class NRSur7dq4v2_gwsurr(NRSur7dq4_gwsurr):
         # super().__init__()
         self.sur = gwsurr.LoadSurrogate("NRSur7dq4v2")
         self._update_domains()
+    
+    @property
+    def metadata(self):
+        # Override the metadata to ensure correct pipeline identification
+        metadata = super().metadata
+        metadata["approximant"] = "NRSur7dq4v2"
+        return metadata
