@@ -20,6 +20,7 @@ from .gwsurr import (
     NR_hdf5_gwsurr,
     NRSurE_NoSpin_gwsurr,
     NRHybSur3dq8_CCE_gwsurr,
+    NRSur7dq4v2_gwsurr,
 )
 from .gwsurr_playground import (
     NRHybSur3dq8_short_gwsurr,
@@ -70,6 +71,7 @@ surrogate_models = {
     ),
     "NRSurE_NoSpin": SurrogateWaveformProperties(precessing=False,eccentric=True, wrapper=NRSurE_NoSpin_gwsurr),
 
+    "NRSur7dq4v2": SurrogateWaveformProperties(precessing=True, wrapper=NRSur7dq4v2_gwsurr),
 }
 
 
