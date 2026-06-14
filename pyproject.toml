@@ -11,8 +11,3 @@ dependencies = ["numpy", "scipy", "bilby", "astropy"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["gwsignal4gwsurr"]
-
-[tool.setuptools_scm]
-write_to = "gwsignal4gwsurr/_version.py"
-version_scheme = "guess-next-dev"
-local_scheme = "dirty-tag"
