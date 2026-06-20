@@ -513,7 +513,7 @@ class SurrogateWaveformGenerator(WaveformGenerator):
         model = surrogate_models.get(approximant, None)
 
         # --- Circumvent this interface and use bilby defaults---#
-        if kwargs.pop("use_bilby", False):
+        if kwargs["waveform_arguments"].pop("use_bilby", False):
             model = None
         # -------------------------------------------------------#
 
