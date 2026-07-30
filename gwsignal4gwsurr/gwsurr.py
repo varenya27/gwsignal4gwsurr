@@ -313,7 +313,12 @@ class NRSur7dq4_gwsurr(CompactBinaryCoalescenceGenerator):
         dist = self.waveform_dict["distance"]
         q = m1 / m2  # This is the gwsurrogate convention, q=m1/m2>=1
         if q < 1.0:
-            raise Exception("m2 should not be bigger than m1!")
+            if np.isclose(float(m1),float(m2), rtol=1e-4):
+                print(f'WARN m2={m2}>m1={m1} but close to equal mass system, swapping black holes')
+                q=1/q
+                chi1, chi2 = chi2, chi1
+            else:
+                raise Exception("m2 should not be bigger than m1!")
 
         times, h, dyn = self.sur(
             q,
