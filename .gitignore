@@ -15,3 +15,5 @@ dist/
 gwsignal4gwsurr.egg-info/
 gwsignal4gwsurr/_version.py
 .ruff_cache/
+
+CLAUDE.md
