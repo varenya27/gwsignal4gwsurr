@@ -17,6 +17,7 @@ from gwpy.timeseries import TimeSeries
 
 try: 
     import sxs
+    from sxs.waveforms.format_handlers.lvc import to_lvc_conventions
 except ModuleNotFoundError:
     warnings.warn("Could not find the sxs package, SXS-NR injections will not work")
 
@@ -271,75 +272,161 @@ class NR_SXS(NRSur7dq4_gwsurr):
 
         SXS_ID = parameters.pop('SXS_ID')
         ModeArray = parameters.pop('ModeArray',None)
-        print('DBUG got mode array', ModeArray)
+        remove_memory = parameters.pop('remove_memory', True)
 
         self.parameter_check(units_sys="Cosmo", **parameters)
         self.waveform_dict = self._strip_units(self.waveform_dict)
 
         fstart, dt = self.waveform_dict["f22_start"], self.waveform_dict["deltaT"]
+        print('DBUG gwsign sxs got fstart=',fstart)
         f_ref = self.waveform_dict["f22_ref"]
 
         lmax = self.waveform_dict.get("lmax",None)
-        print('WARN hardcoding lmax=2')
-        lmax = 2
 
         dist_mpc = self.waveform_dict['distance']/1e6
         Mtot = self.waveform_dict['mass1']+self.waveform_dict['mass2']
 
+        # scale factors for conversion to/from SI units 
         amp_scale = Mtot*gwtools.Msuninsec*gwtools.c/(1e6*dist_mpc*gwtools.PC_SI)
         t_scale = gwtools.Msuninsec * Mtot
-        print('DBUG gwsignal tscale=',t_scale)
 
-        fstart_M = fstart*t_scale
-        print('DBUG SXS fstarts:', fstart, fstart_M)
-        f_ref_M = f_ref*t_scale
+        # convert GW frequency in Hz to orbital frequency in cycles/M
+        fstart_M = fstart*t_scale/2
+        f_ref_M = f_ref*t_scale/2
         dt_M = dt /t_scale
-        print('DBUG dt in natural units',dt_M)
 
         # sxs function call to get dimless strain
-        sxs_bbh = sxs.load('SXS:BBH:%04d'%SXS_ID)
+        try:
+            sxs_bbh = sxs.load('SXS:BBH:%04d'%SXS_ID)
 
-        print('DBUG generating SXS waveform with args',
-            f_ref_M,
-            dt_M,
-            fstart_M,
-            lmax,
-            None,
-            None
-              )
-        times, h, _= sxs_bbh.to_lvk(
-            f_ref = f_ref_M,
-            dt = dt_M,
-            f_low = fstart_M,
-            ell_max = lmax,
-            phi_ref = None,
-            inclination = None
-        )
+            print('INFO SXS waveform diagnostics:')
+            print(f'    SXS ID : SXS:BBH:{SXS_ID:04d} ')
+            print(f'    Lev    : {getattr(sxs_bbh, "Lev", "N/A")} ')
+            print(f'    ellmax : {lmax} ({getattr(getattr(sxs_bbh, "h", None), "ell_max", "N/A")} available)')
+            print('INFO SXS reference parameters:')
+            print(f'    mass1  : {sxs_bbh.metadata.get("reference_mass1", "N/A")}')
+            print(f'    mass2  : {sxs_bbh.metadata.get("reference_mass2", "N/A")}')
+            print(f'    q      : {sxs_bbh.metadata.get("reference_mass_ratio", "N/A")}')
+            print(f'    chi1   : {sxs_bbh.metadata.get("reference_dimensionless_spin1", "N/A")}')
+            print(f'    chi2   : {sxs_bbh.metadata.get("reference_dimensionless_spin2", "N/A")}')
+            print(f'    ecc    : {sxs_bbh.metadata.get("reference_eccentricity", "N/A")}')
+            print(f'    ell    : {sxs_bbh.metadata.get("reference_mean_anomaly", "N/A")}')
+        except Exception:
+            raise Exception('KILL Could not load simulation! Try checking the ID?')
+
+        if not remove_memory:
+            raise NotImplementedError
+
+        else:
+            print('INFO waveform will not have memory')
+
+            strain = sxs_bbh.load_waveform(
+                *sxs_bbh.strain_path,
+                transform_to_inertial=True,
+            )
+
+            strain_no_memory = strain.remove_memory(sxs_bbh.metadata.relaxation_time)
+            times, h, dyn = to_lvc_conventions(
+                strain_no_memory.to_corotating_frame(),
+                sxs_bbh.horizons,
+                f_ref=f_ref_M,
+                dt=dt_M,
+                f_low=fstart_M,
+                ell_max=lmax,
+                phi_ref=None,
+                inclination=None,
+            )
+
+        # sxs does not trim the waveform at f_low/t_low
+        # so we take matters into our own hands
+        start_ind = np.argmin(np.abs(times-dyn['t_low']))
 
         # convert to unitful qty using Mtot and d_lum
         times *= t_scale
+        h_dict = {}
+        for k,v in h.items():
+            l,m = k
+            if l<2: 
+                continue
+            if m%2==0:
+                h_dict[k] = -v[start_ind:]*amp_scale
+            else:
+                h_dict[k] = v[start_ind:]*amp_scale
 
-        # h_dict = {}
-        # for k,v in h.items():
-        #     if k[0]>5:
-        #         break
-        #     print('DBUG rescaling mode',k,v)
-        #     h_dict[k] = v*amp_scale
-        #     print(h_dict[k])
-
-        h_dict = {
-            (2,2) : h[2,2]*amp_scale
-        }
-
-
-        hlm = self._to_gwpy_series(h_dict, times)
+        hlm = self._to_gwpy_series(h_dict, times[start_ind:])
         return gw.GravitationalWaveModes(hlm)
-
 
     def generate_td_waveform(self, **parameters):
         theta, phi = (
             parameters["inclination"],
-            parameters["phi_ref"],
+            # parameters["phi_ref"]
+            (np.pi / 2 - parameters["phi_ref"].value) * u.rad,
+        )
+        hlm = self.generate_td_modes(**parameters)
+        hp, hc = hlm(theta, phi)
+        hp, hc = TimeSeries(hp, name="hplus"), TimeSeries(hc, name="hcross")
+        return hp, hc
+
+class NR_SimulationAnnex(NRSur7dq4_gwsurr):
+    """
+    Implements a toy wrapper for NR waveforms using the sxs package
+    """
+
+    def __init__(self, **kwargs):
+        self._update_domains()
+
+    @property
+    def metadata(self):
+        metadata = {
+            "type": "precessing",
+            "f_ref_spin": True,
+            "modes": True,
+            "polarizations": True,
+            "implemented_domain": "time",
+            "approximant": "NR_SXS",
+            "implementation": "Python",
+            "conditioning_routines": "gwsignal",
+            "length": "short"
+        }
+        return metadata
+
+    def generate_td_modes(self, **parameters):
+        """
+        Generate modes by calling sxs
+        """
+
+        SXS_ID = parameters.pop('SXS_ID')
+        ModeArray = parameters.pop('ModeArray',None)
+        remove_memory = parameters.pop('remove_memory', True)
+
+        self.parameter_check(units_sys="Cosmo", **parameters)
+        self.waveform_dict = self._strip_units(self.waveform_dict)
+
+        fstart, dt = self.waveform_dict["f22_start"], self.waveform_dict["deltaT"]
+        print('DBUG gwsign sxs got fstart=',fstart)
+        f_ref = self.waveform_dict["f22_ref"]
+
+        lmax = self.waveform_dict.get("lmax",None)
+
+        dist_mpc = self.waveform_dict['distance']/1e6
+        Mtot = self.waveform_dict['mass1']+self.waveform_dict['mass2']
+
+        # scale factors for conversion to/from SI units 
+        amp_scale = Mtot*gwtools.Msuninsec*gwtools.c/(1e6*dist_mpc*gwtools.PC_SI)
+        t_scale = gwtools.Msuninsec * Mtot
+
+        # convert GW frequency in Hz to orbital frequency in cycles/M
+        fstart_M = fstart*t_scale/2
+        f_ref_M = f_ref*t_scale/2
+        dt_M = dt /t_scale
+
+        return gw.GravitationalWaveModes(hlm)
+
+    def generate_td_waveform(self, **parameters):
+        theta, phi = (
+            parameters["inclination"],
+            # parameters["phi_ref"]
+            (np.pi / 2 - parameters["phi_ref"].value) * u.rad,
         )
         hlm = self.generate_td_modes(**parameters)
         hp, hc = hlm(theta, phi)
