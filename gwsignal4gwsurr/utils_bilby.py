@@ -242,7 +242,7 @@ def gwsurrogate_binary_black_hole_precessing(
         hp_gwsignal, hc_gwsignal = gen.generate_fd_polarizations_from_td(**parameters)
     except Exception as e:
         if waveform_arguments.get("catch_waveform_errors", False):
-            print(f"PROG {approximant} failed to generate waveform: {e}")
+            # print(f"PROG {approximant} failed to generate waveform: {e}")
             return None
         raise
 
